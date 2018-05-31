@@ -61,27 +61,26 @@ def get_auth_client()
 	return $__auth_client
 end
 
+# XXX/FIXME This function is really slow.
 def get_parent_path(file_id, drive)
-	p_stack = []
-
+	__total = ""
 	file = drive.get_file(file_id)
+
 	begin
 		if file.nil?
 			break
 		end
-		p_stack << file.title
 		if file.parents[0]
 			nxt_id = file.parents[0].id
 		else
 			nxt_id = nil
 		end
+
+		__total = "#{file.title}" + "/" + __total
 	end while nxt_id != nil and file = drive.get_file(nxt_id)
 
-	path = ""
-	while p = p_stack.pop
-		path << p + "/" 
-	end
-	return path
+	#puts "DEBUG> __total=[#{__total}]"
+	return __total
 end
 
 def print_file_info(file: nil, file_id: nil, drive: nil)
@@ -118,7 +117,6 @@ def print_file_info(file: nil, file_id: nil, drive: nil)
 	#file.owner_names.each do |owner|
 	#	puts "==> ON: #{owner}"
 	#end
-
 
 	if $options[:verbose]
 		# List permissions for file
@@ -315,6 +313,54 @@ def traverse(dirid, __nested_drive = nil)
 	end
 end
 
+def print_usage(opt: nil)
+	puts "my-gdrive-helper.rb [action] [action-options]\n\
+\tAction is one of:
+\t\t--find-directory <directory-name>: Locate directory by name
+\t\t--traverse <directory-id>: Traverse directory starting from directory ID
+\t\t--find-user-shares: Find user shares, user list? supplied in --email"
+	exit(2)
+end
+
+## Entry Point
+def find_user_shares(user_list)
+	drive = Google::Apis::DriveV2::DriveService.new
+	drive.authorization = get_auth_client()
+
+	page_token = nil
+	query = ""
+
+	user_list.each do |email_address|
+		count = 0
+		query = "\'#{email_address}\' in writers or \'#{email_address}\' in readers "
+
+		puts "++ Query string [#{query}]" if $options[:verbose]
+		puts "User: #{email_address}"
+		begin
+			files = drive.list_files(q: query, page_token: page_token)
+			files.items.each do |file|
+				if $options[:long_listing]
+					print_file_info(file: file, drive: drive)
+				else
+					if !file.parents[0].nil?
+						filepath = get_parent_path(file.parents[0].id, drive) + file.title
+					else
+						filepath = "<" + file.title + ">"
+					end
+					puts "--> #{filepath}"
+				end
+
+				if $options[:revoke_sharing]
+					revoke_sharing_permissions(file, drive)
+				end
+				count += 1
+			end
+		end
+		puts "(Total #{count} entries)\n\n"
+	end
+
+
+end
 ##########
 ## MAIN ##
 ##########
@@ -372,11 +418,30 @@ OptionParser.new do |opt|
 	opt.on('', '--dry-run') do
 		$options[:dry_run] = true
 	end
+
+	opt.on('', '--find-user-shares') do
+		puts "+ Finding user shares"
+		$options[:find_user_shares] = true
+		# User list will come in --email <email1.com> --email <email2.com> ...
+	end
+
+	opt.on('', '--find-file FILENAME_PATTERN') do |fname|
+		$options[:find_file] = fname
+	end
+
 end.parse!
 
-find_directory($options[:directory_name]) if $options[:directory_name]
-
-traverse($options[:traverse]) if $options[:traverse]
+# Start running main functions/actions
+if $options[:directory_name]
+	find_directory($options[:directory_name])
+elsif $options[:traverse]
+	traverse($options[:traverse])
+elsif $options[:find_user_shares]
+	if $options[:email_list].nil?
+		print_usage(opt) # XXX
+	end
+	find_user_shares($options[:email_list])
+end
 
 #########
 ## EOF ##
