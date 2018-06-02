@@ -6,8 +6,15 @@ Ever find your Google drive in a complete mess with sharing permissions? This sc
 
 # Install
 
+* Install necessary gems:
 > $ gem install google-api-client<br>
 > $ gem install launchy
+
+* Create Applicaiton/project from google developer console
+
+* From developer console get client_secrets.json file and place it in the directory where the Ruby script resides
+
+* XXX This procedure cloud change I guess.
 
 # Usage
 
