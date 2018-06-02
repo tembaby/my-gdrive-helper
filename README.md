@@ -2,7 +2,7 @@
 
 # Install
 
-> $ gem install google-api-client
+> $ gem install google-api-client<br>
 > $ gem install launchy
 
 # Usage
