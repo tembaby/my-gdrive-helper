@@ -358,9 +358,8 @@ def find_user_shares(user_list)
 		end
 		puts "(Total #{count} entries)\n\n"
 	end
-
-
 end
+
 ##########
 ## MAIN ##
 ##########
@@ -429,6 +428,11 @@ OptionParser.new do |opt|
 		$options[:find_file] = fname
 	end
 
+	opt.on('', '--apply-action action') do |action|
+		$options[:apply_action] = action
+		# restricted: File::Labels::restircted = true (prevent users from download, print, copy file)
+	end
+
 end.parse!
 
 # Start running main functions/actions
@@ -438,7 +442,7 @@ elsif $options[:traverse]
 	traverse($options[:traverse])
 elsif $options[:find_user_shares]
 	if $options[:email_list].nil?
-		print_usage(opt) # XXX
+		print_usage($options)
 	end
 	find_user_shares($options[:email_list])
 end
