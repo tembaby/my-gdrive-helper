@@ -40,9 +40,9 @@ Ever find your Google drive in a complete mess with sharing permissions? This sc
 > $ ./my-gdrive-helper.rb --find-user-shares --email person@domain.com --long --verbose --revoke-sharing
 
 * Apply action: Turn on "Prevent users from downloading, copying or printing" a file (apply to files only):
-> $ ./my-gdrive-helper.rb --find-directory *DIRECTORY-NAME* --apply-action restricted --long --verbose
+> $ ./my-gdrive-helper.rb --find-directory *DIRECTORY-NAME* --apply-action restricted --long --verbose<br>
 > $ ./my-gdrive-helper.rb --traverse *DIRECTORY-ID*  --apply-action restricted --long --verbose
 
 * Apply action: Prevent editors/writer from adding other users to a file/directory:
-> $ ./my-gdrive-helper.rb --find-directory *DIRECTORY-NAME* --apply-action no-share --long --verbose
+> $ ./my-gdrive-helper.rb --find-directory *DIRECTORY-NAME* --apply-action no-share --long --verbose<br>
 > $ ./my-gdrive-helper.rb --traverse *DIRECTORY-ID*  --apply-action no-share --long --verbose
