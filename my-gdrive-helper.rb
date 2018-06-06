@@ -99,7 +99,8 @@ def print_file_info(file: nil, file_id: nil, drive: nil)
 	end
 
 	puts ">> File #{file.title} [#{file.id}]:"
-	puts "   File type: [#{file.mime_type}], shared=#{file.shared}"
+	puts "   File type: [#{file.mime_type}], shared=#{file.shared},"
+	puts "              editor_can_share=#{file.writers_can_share}, restricted=#{file.labels.restricted}"
 
 	file.owners.each do |owner|
 		puts "   Owned by #{owner.display_name} (#{owner.email_address}) and permission ID #{owner.permission_id}"
@@ -190,6 +191,11 @@ def find_directory(dirname = nil)
 				end
 
 				print_file_info(file: file, drive: drive)
+
+				if $options[:apply_action] and not $options[:dry_run]
+					apply_action(file, drive)
+				end
+
 			 	count += 1
 			end
 		end
@@ -203,6 +209,40 @@ def find_directory(dirname = nil)
 	end while not page_token.nil? and limit > 0
 
 	puts "++ #{count} total listed (limit=#{limit})"
+end
+
+def apply_action(file, drive)
+	my_email = drive.get_about().user.email_address
+	my_name = drive.get_about().user.display_name
+
+	puts "==> ACTION: Applying actions on [#{file.title}]"
+
+	owner = file.owners.at(0).email_address
+	if owner != my_email
+		puts "===> NOTICE: skipping #{file.title}: not owned by me (me(#{my_email})/them(#{owner})))"
+		return
+	end
+
+	# All that can apply
+	if $options[:apply_action_no_share]
+		puts "===> editors cannot share or add others"
+		# This works if no other action 
+		file.writers_can_share = false
+		drive.patch_file(file.id, file)
+	end
+
+	if $options[:apply_action_restricted]
+		puts "===> viewers cannot download, print or copy"
+		if file.mime_type == 'application/vnd.google-apps.folder'
+			puts "===> NOTICE: skipping directory #{file.title}"
+			return
+		end
+		file.labels.restricted = true
+		drive.patch_file(file.id, file)
+	end
+
+	puts "==> ACTION: DONE"
+	puts ""
 end
 
 def revoke_sharing_permissions(file, drive)
@@ -292,6 +332,10 @@ def traverse(dirid, __nested_drive = nil)
 
 			if $options[:revoke_sharing]
 				revoke_sharing_permissions(file, drive)
+			end
+
+			if $options[:apply_action] and not $options[:dry_run]
+				apply_action(file, drive)
 			end
 
 			if file.mime_type == 'application/vnd.google-apps.folder'
@@ -429,8 +473,17 @@ OptionParser.new do |opt|
 	end
 
 	opt.on('', '--apply-action action') do |action|
-		$options[:apply_action] = action
+		$options[:apply_action] = true
 		# restricted: File::Labels::restircted = true (prevent users from download, print, copy file)
+		# writers_can_share: File:writers_can_share = false (Prevent editors from changing access and adding new people)
+		case action
+		when "restricted"
+			$options[:apply_action_restricted] = true
+		when "no-share"
+			$options[:apply_action_no_share] = true
+		else
+			puts "ERROR: --apply-action: invalid action #{action}"
+		end
 	end
 
 end.parse!
